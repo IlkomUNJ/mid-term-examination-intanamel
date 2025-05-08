@@ -9,7 +9,7 @@ pub type WeakBstNodeLink = Weak<RefCell<BstNode>>;
 pub struct BstNode {
     pub key: Option<i32>,
     pub parent: Option<WeakBstNodeLink>,
-    pub left: Option<BstNodeLink>,
+    pub left: Option<BstNodeLink>,                                          
     pub right: Option<BstNodeLink>,
 }
 
@@ -351,5 +351,76 @@ impl BstNode {
             None => None,
             Some(x) => Some(x.upgrade().unwrap()),
         }
+    }
+
+    pub fn add_node(&self, target_node: &BstNodeLink, value: i32) -> bool {
+        if let Some(found_node) = self.tree_search(&target_node.borrow().key.unwrap()) {
+            if value < found_node.borrow().key.unwrap() {
+                if found_node.borrow().left.is_none() {
+                    found_node.borrow_mut().add_left_child(&found_node, value);
+                    return true;
+                }
+            } else {
+                if found_node.borrow().right.is_none() {
+                    found_node.borrow_mut().add_right_child(&found_node, value);
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    pub fn tree_predecessor(node: &BstNodeLink) -> Option<BstNodeLink> {
+        if let Some(left_node) = &node.borrow().left {
+            return Some(left_node.borrow().maximum());
+        }
+    
+        let mut current_node = node.clone();
+        let mut parent_node = BstNode::upgrade_weak_to_strong(current_node.borrow().parent.clone());
+    
+        while let Some(parent) = parent_node {
+            if let Some(right_child) = &parent.borrow().right {
+                if BstNode::is_node_match(right_child, &current_node) {
+                    return Some(parent.clone());
+                }
+            }
+            current_node = parent.clone();
+            parent_node = BstNode::upgrade_weak_to_strong(parent.borrow().parent.clone());
+        }
+    
+        None
+    }
+
+    pub fn median(&self) -> BstNodeLink {
+        let slow = self.get_bst_nodelink_copy();
+        let fast = self.get_bst_nodelink_copy();
+    
+        while let Some(right_child) = &fast.borrow().right {
+            let next_fast = {
+                right_child.borrow().maximum() 
+            };
+            fast = next_fast;
+    
+            if let Some(left_child) = &slow.borrow().left {
+                let next_slow = {
+                    left_child.borrow().minimum() 
+                };
+                slow = next_slow;
+            }
+        }
+    
+        slow
+    }
+    
+    pub fn tree_rebalance(node: &BstNodeLink) -> BstNodeLink {
+        let mut current = node.borrow().minimum();
+        let root = BstNode::new_bst_nodelink(current.borrow().key.unwrap());
+    
+        while let Some(successor) = BstNode::tree_successor(&current) {
+            BstNode::tree_insert(&Some(root.clone()), &successor.borrow().key.unwrap());
+            current = successor;
+        }
+    
+        root
     }
 }
